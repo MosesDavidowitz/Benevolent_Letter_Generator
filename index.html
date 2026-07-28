@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Benevolent Home Care Letter Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root {
       --purple: #94439f;
@@ -469,10 +470,9 @@
 
       <div class="button-row">
         <button class="secondary" id="clearBtn" type="button">Clear</button>
-        <button class="primary" id="printBtn" type="button">Export PDF</button>
+        <button class="primary" id="printBtn" type="button">Download PDF</button>
       </div>
 
-      <div class="hint">When the print window opens, choose <strong>Save as PDF</strong>. For the cleanest result, disable browser headers and footers and keep the scale at 100%.</div>
     </aside>
 
     <main class="preview-wrap" id="previewWrap">
@@ -500,7 +500,7 @@
               <div class="recipient-block" id="previewRecipient"></div>
               <div class="subject-line" id="previewSubject"></div>
               <div class="salutation" id="previewSalutation">Dear Sir or Madam,</div>
-              <div class="body-copy" id="previewBody">Type or paste your letter in the panel above.</div>
+              <div class="body-copy" id="previewBody"></div>
               <div class="closing" id="previewClosing">Sincerely,</div>
 
               <div class="signature-block">
@@ -610,7 +610,7 @@
       $('previewSubject').style.display = subject ? 'block' : 'none';
 
       $('previewSalutation').textContent = fields.salutation.value;
-      $('previewBody').textContent = fields.letterBody.value || 'Type or paste your letter in the panel above.';
+      $('previewBody').textContent = fields.letterBody.value;
       $('previewClosing').textContent = fields.closingText.value;
 
       $('previewSignerName').textContent = fields.signerName.value;
@@ -758,7 +758,92 @@
       if (event.key === 'Escape' && $('signatureModal').classList.contains('show')) closeSignatureModal();
     });
 
-    $('printBtn').addEventListener('click', () => window.print());
+    function safeFilenamePart(value) {
+      return (value || '')
+        .trim()
+        .replace(/[^a-z0-9 _-]/gi, '')
+        .replace(/\s+/g, ' ')
+        .slice(0, 60);
+    }
+
+    async function downloadPdf() {
+      const button = $('printBtn');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Creating PDF...';
+
+      try {
+        if (typeof html2pdf === 'undefined') {
+          throw new Error('PDF library did not load. Please check your internet connection and try again.');
+        }
+
+        const page = $('letterPage');
+        const clone = page.cloneNode(true);
+        clone.style.transform = 'none';
+        clone.style.boxShadow = 'none';
+        clone.style.margin = '0';
+        clone.style.position = 'fixed';
+        clone.style.left = '-10000px';
+        clone.style.top = '0';
+        clone.style.width = '8.5in';
+        clone.style.minHeight = '11in';
+        clone.style.zIndex = '-1';
+        document.body.appendChild(clone);
+
+        const recipientName = safeFilenamePart(fields.recipient.value.split('\n')[0]);
+        const subjectName = safeFilenamePart(fields.subject.value);
+        const fileBase = recipientName || subjectName || 'Benevolent Letter';
+        const filename = `${fileBase}.pdf`;
+
+        const worker = html2pdf().set({
+          margin: 0,
+          filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 816
+          },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
+          pagebreak: { mode: ['css', 'legacy'] }
+        }).from(clone).toPdf();
+
+        const blob = await worker.outputPdf('blob');
+        clone.remove();
+
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
+        }
+      } catch (error) {
+        console.error(error);
+        alert(error.message || 'The PDF could not be created. Please try again.');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
+    $('printBtn').addEventListener('click', downloadPdf);
 
     $('clearBtn').addEventListener('click', () => {
       fields.letterDate.value = localISODate();
