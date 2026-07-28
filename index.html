@@ -192,6 +192,7 @@
     .letter-page {
       position: relative;
       width: 8.5in;
+      transform-origin: top left;
       min-height: 11in;
       padding: .62in .72in .67in;
       background: var(--paper);
@@ -548,6 +549,8 @@
       signerTitle: $('signerTitle')
     };
 
+    const SIGNER_STORAGE_KEY = 'benevolentLetterGenerator.signerProfile.v1';
+
     let signatureData = '';
     let isDrawing = false;
     let hasCanvasInk = false;
@@ -567,6 +570,34 @@
       return new Date(y, m - 1, d).toLocaleDateString('en-US', {
         month: 'long', day: 'numeric', year: 'numeric'
       });
+    }
+
+
+    function loadSignerProfile() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SIGNER_STORAGE_KEY) || '{}');
+        fields.signerName.value = saved.name || '';
+        fields.signerTitle.value = saved.title || '';
+        signatureData = saved.signature || '';
+        fields.includeSignature.checked = saved.includeSignature === undefined
+          ? Boolean(signatureData)
+          : Boolean(saved.includeSignature && signatureData);
+      } catch (error) {
+        console.warn('Unable to load the saved signer profile.', error);
+      }
+    }
+
+    function saveSignerProfile() {
+      try {
+        localStorage.setItem(SIGNER_STORAGE_KEY, JSON.stringify({
+          name: fields.signerName.value.trim(),
+          title: fields.signerTitle.value.trim(),
+          signature: signatureData,
+          includeSignature: fields.includeSignature.checked
+        }));
+      } catch (error) {
+        console.warn('Unable to save the signer profile.', error);
+      }
     }
 
     function updatePreview() {
@@ -601,17 +632,19 @@
       const page = $('letterPage');
 
       if (window.matchMedia('print').matches || window.innerWidth > 1100) {
-        stage.style.transform = '';
-        stage.style.height = '';
         stage.style.width = '';
+        stage.style.height = '';
+        page.style.transform = '';
         return;
       }
 
-      const available = Math.max(280, wrap.clientWidth - 2);
+      const horizontalPadding = window.innerWidth <= 600 ? 4 : 12;
+      const available = Math.max(260, wrap.clientWidth - horizontalPadding);
       const scale = Math.min(1, available / page.offsetWidth);
-      stage.style.width = page.offsetWidth + 'px';
-      stage.style.height = (page.offsetHeight * scale) + 'px';
-      stage.style.transform = `scale(${scale})`;
+
+      stage.style.width = `${page.offsetWidth * scale}px`;
+      stage.style.height = `${page.offsetHeight * scale}px`;
+      page.style.transform = `scale(${scale})`;
     }
 
     function resizeCanvas() {
@@ -677,6 +710,16 @@
       el.addEventListener('change', updatePreview);
     });
 
+    [fields.signerName, fields.signerTitle].forEach(el => {
+      el.addEventListener('input', saveSignerProfile);
+      el.addEventListener('change', saveSignerProfile);
+    });
+
+    fields.includeSignature.addEventListener('change', () => {
+      saveSignerProfile();
+      updatePreview();
+    });
+
     canvas.addEventListener('pointerdown', startDrawing);
     canvas.addEventListener('pointermove', draw);
     canvas.addEventListener('pointerup', stopDrawing);
@@ -694,6 +737,7 @@
       }
       signatureData = canvas.toDataURL('image/png');
       fields.includeSignature.checked = true;
+      saveSignerProfile();
       closeSignatureModal();
       updatePreview();
     });
@@ -701,6 +745,7 @@
     $('removeSignatureBtn').addEventListener('click', () => {
       signatureData = '';
       fields.includeSignature.checked = false;
+      saveSignerProfile();
       $('previewDrawnSignature').removeAttribute('src');
       updatePreview();
     });
@@ -722,22 +767,21 @@
       fields.salutation.value = 'Dear Sir or Madam,';
       fields.letterBody.value = '';
       fields.closingText.value = 'Sincerely,';
-      fields.includeSignature.checked = false;
-      fields.signerName.value = '';
-      fields.signerTitle.value = '';
-      signatureData = '';
+      loadSignerProfile();
       updatePreview();
     });
 
     window.addEventListener('resize', fitPreview);
     window.addEventListener('load', fitPreview);
     window.addEventListener('beforeprint', () => {
-      $('pageStage').style.transform = '';
+      $('pageStage').style.width = '';
       $('pageStage').style.height = '';
+      $('letterPage').style.transform = '';
     });
     window.addEventListener('afterprint', fitPreview);
 
     fields.letterDate.value = localISODate();
+    loadSignerProfile();
     updatePreview();
     setTimeout(fitPreview, 50);
   </script>
