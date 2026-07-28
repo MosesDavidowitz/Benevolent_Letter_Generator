@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Benevolent Home Care Letter Generator</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
   <style>
     :root {
       --purple: #94439f;
@@ -766,6 +766,21 @@
         .slice(0, 60);
     }
 
+    function waitForImage(img) {
+      return new Promise((resolve, reject) => {
+        if (img.complete && img.naturalWidth) {
+          resolve(img);
+          return;
+        }
+        img.addEventListener('load', () => resolve(img), { once: true });
+        img.addEventListener('error', () => reject(new Error(`Unable to load ${img.src}`)), { once: true });
+      });
+    }
+
+    function cleanMultiline(value) {
+      return (value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+
     async function downloadPdf() {
       const button = $('printBtn');
       const originalText = button.textContent;
@@ -773,67 +788,183 @@
       button.textContent = 'Creating PDF...';
 
       try {
-        if (typeof html2pdf === 'undefined') {
+        if (!window.jspdf?.jsPDF) {
           throw new Error('PDF library did not load. Please check your internet connection and try again.');
         }
 
-        const page = $('letterPage');
-        const clone = page.cloneNode(true);
-        clone.style.transform = 'none';
-        clone.style.boxShadow = 'none';
-        clone.style.margin = '0';
-        clone.style.position = 'fixed';
-        clone.style.left = '-10000px';
-        clone.style.top = '0';
-        clone.style.width = '8.5in';
-        clone.style.minHeight = '11in';
-        clone.style.zIndex = '-1';
-        document.body.appendChild(clone);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'pt',
+          format: 'letter',
+          compress: true,
+          putOnlyUsedFonts: true
+        });
+
+        const PAGE_W = 612;
+        const PAGE_H = 792;
+        const LEFT = 58;
+        const RIGHT = 58;
+        const CONTENT_W = PAGE_W - LEFT - RIGHT;
+        const BODY_TOP = 150;
+        const BOTTOM_LIMIT = 724;
+        const PURPLE = [148, 67, 159];
+        const DARK_PURPLE = [111, 43, 121];
+        const MUTED = [92, 84, 96];
+
+        const logo = document.querySelector('.letterhead img');
+        const watermark = document.querySelector('.watermark');
+        await Promise.allSettled([waitForImage(logo), waitForImage(watermark)]);
+
+        function addHeaderAndFooter() {
+          doc.setFillColor(255, 255, 255);
+          doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+
+          if (watermark?.complete && watermark.naturalWidth) {
+            try {
+              doc.saveGraphicsState();
+              doc.setGState(new doc.GState({ opacity: 0.035 }));
+              doc.addImage(watermark, 'PNG', 160, 365, 292, 292, undefined, 'FAST');
+              doc.restoreGraphicsState();
+            } catch (e) {
+              console.warn('Watermark could not be added.', e);
+            }
+          }
+
+          if (logo?.complete && logo.naturalWidth) {
+            const maxW = 390;
+            const maxH = 62;
+            const ratio = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
+            const w = logo.naturalWidth * ratio;
+            const h = logo.naturalHeight * ratio;
+            try {
+              doc.addImage(logo, 'PNG', (PAGE_W - w) / 2, 24, w, h, undefined, 'FAST');
+            } catch (e) {
+              console.warn('Logo could not be added.', e);
+            }
+          }
+
+          doc.setDrawColor(...PURPLE);
+          doc.setLineWidth(1.25);
+          doc.line(58, 94, 554, 94);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.4);
+          doc.setTextColor(...MUTED);
+          doc.text('1021 McDonald Avenue, Brooklyn, NY 11230  |  718-345-1000  |  info@benevolenthomecare.com', PAGE_W / 2, 108, { align: 'center' });
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...DARK_PURPLE);
+          doc.text('www.benevolenthomecare.com', PAGE_W / 2, 119, { align: 'center' });
+
+          doc.setDrawColor(225, 216, 229);
+          doc.setLineWidth(.6);
+          doc.line(58, 748, 554, 748);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6.8);
+          doc.setTextColor(...DARK_PURPLE);
+          doc.text('Compassionate care. Dependable support. Dignity at home.', PAGE_W / 2, 763, { align: 'center' });
+
+          doc.setTextColor(30, 27, 31);
+        }
+
+        let y = BODY_TOP;
+        addHeaderAndFooter();
+
+        function nextPage() {
+          doc.addPage('letter', 'portrait');
+          addHeaderAndFooter();
+          y = BODY_TOP;
+        }
+
+        function ensureSpace(height) {
+          if (y + height > BOTTOM_LIMIT) nextPage();
+        }
+
+        function addWrappedText(text, options = {}) {
+          const {
+            font = 'times',
+            style = 'normal',
+            size = 11,
+            lineHeight = 16,
+            gapAfter = 0,
+            indent = 0,
+            color = [30, 27, 31]
+          } = options;
+
+          doc.setFont(font, style);
+          doc.setFontSize(size);
+          doc.setTextColor(...color);
+
+          const paragraphs = cleanMultiline(text).split('\n');
+          paragraphs.forEach((paragraph, paragraphIndex) => {
+            if (!paragraph.trim()) {
+              ensureSpace(lineHeight);
+              y += lineHeight;
+              return;
+            }
+
+            const lines = doc.splitTextToSize(paragraph, CONTENT_W - indent);
+            lines.forEach(line => {
+              ensureSpace(lineHeight);
+              doc.text(line, LEFT + indent, y);
+              y += lineHeight;
+            });
+
+            if (paragraphIndex < paragraphs.length - 1) y += 2;
+          });
+          y += gapAfter;
+        }
+
+        addWrappedText(formatDate(fields.letterDate.value), { size: 10.5, lineHeight: 15, gapAfter: 12 });
+
+        const recipient = cleanMultiline(fields.recipient.value).trim();
+        if (recipient) addWrappedText(recipient, { size: 10.5, lineHeight: 14, gapAfter: 11 });
+
+        const subject = fields.subject.value.trim();
+        if (subject) {
+          const subjectText = subject.toLowerCase().startsWith('re:') ? subject : `Re: ${subject}`;
+          addWrappedText(subjectText, { font: 'times', style: 'bold', size: 10.5, lineHeight: 15, gapAfter: 12 });
+        }
+
+        const salutation = fields.salutation.value.trim();
+        if (salutation) addWrappedText(salutation, { size: 11, lineHeight: 16, gapAfter: 12 });
+
+        const body = cleanMultiline(fields.letterBody.value).trim();
+        if (body) addWrappedText(body, { size: 11, lineHeight: 16.5, gapAfter: 16 });
+
+        const closing = fields.closingText.value.trim();
+        if (closing) addWrappedText(closing, { size: 11, lineHeight: 16, gapAfter: 6 });
+
+        const showSignature = fields.includeSignature.checked && !!signatureData;
+        if (showSignature) {
+          ensureSpace(48);
+          try {
+            const props = doc.getImageProperties(signatureData);
+            const maxW = 112;
+            const maxH = 42;
+            const ratio = Math.min(maxW / props.width, maxH / props.height);
+            const w = props.width * ratio;
+            const h = props.height * ratio;
+            doc.addImage(signatureData, 'PNG', LEFT, y - 2, w, h, undefined, 'FAST');
+            y += h + 4;
+          } catch (e) {
+            console.warn('Signature could not be added.', e);
+          }
+        } else {
+          y += 6;
+        }
+
+        const signerName = fields.signerName.value.trim();
+        const signerTitle = fields.signerTitle.value.trim();
+        if (signerName) addWrappedText(signerName, { font: 'times', style: 'bold', size: 10.8, lineHeight: 14 });
+        if (signerTitle) addWrappedText(signerTitle, { size: 10.2, lineHeight: 14 });
 
         const recipientName = safeFilenamePart(fields.recipient.value.split('\n')[0]);
         const subjectName = safeFilenamePart(fields.subject.value);
         const fileBase = recipientName || subjectName || 'Benevolent Letter';
         const filename = `${fileBase}.pdf`;
 
-        const worker = html2pdf().set({
-          margin: 0,
-          filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: 816
-          },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
-          pagebreak: { mode: ['css', 'legacy'] }
-        }).from(clone).toPdf();
-
-        const blob = await worker.outputPdf('blob');
-        clone.remove();
-
-        const file = new File([blob], filename, { type: 'application/pdf' });
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: filename
-          });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 1500);
-        }
+        doc.save(filename);
       } catch (error) {
         console.error(error);
         alert(error.message || 'The PDF could not be created. Please try again.');
