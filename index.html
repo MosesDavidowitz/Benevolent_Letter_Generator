@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Benevolent Home Care Letter Generator</title>
   <style>
     :root {
@@ -16,6 +16,8 @@
     }
 
     * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
 
     body {
       margin: 0;
@@ -61,7 +63,9 @@
     }
 
     input, textarea, select {
+      display: block;
       width: 100%;
+      min-height: 42px;
       border: 1px solid #d8cfdb;
       border-radius: 8px;
       padding: 10px 11px;
@@ -70,6 +74,13 @@
       color: var(--ink);
       background: #fff;
       outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input[type="date"] {
+      height: 42px;
+      line-height: 20px;
     }
 
     input:focus, textarea:focus, select:focus {
@@ -92,12 +103,16 @@
     }
 
     .check-row input {
-      width: auto;
+      width: 18px;
+      height: 18px;
+      min-height: 0;
+      padding: 0;
       accent-color: var(--purple);
+      -webkit-appearance: auto;
+      appearance: auto;
     }
 
-    .signature-fields {
-      display: none;
+    .signature-area {
       padding: 14px;
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -105,7 +120,24 @@
       margin-bottom: 15px;
     }
 
-    .signature-fields.show { display: block; }
+    .signature-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .signature-actions button {
+      flex: 1;
+      padding: 9px 10px;
+      font-size: 12px;
+    }
+
+    .signature-status {
+      margin-top: 8px;
+      min-height: 16px;
+      font-size: 11px;
+      color: var(--muted);
+    }
 
     .button-row {
       display: grid;
@@ -133,6 +165,11 @@
       color: var(--purple-dark);
     }
 
+    .danger-light {
+      background: #f3edf4;
+      color: #6b5d70;
+    }
+
     .hint {
       margin-top: 12px;
       font-size: 11px;
@@ -145,11 +182,17 @@
       overflow: auto;
     }
 
+    .page-stage {
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto;
+      transform-origin: top center;
+    }
+
     .letter-page {
       position: relative;
       width: 8.5in;
       min-height: 11in;
-      margin: 0 auto;
       padding: .62in .72in .67in;
       background: var(--paper);
       box-shadow: 0 12px 35px rgba(52, 37, 56, .16);
@@ -158,10 +201,11 @@
 
     .watermark {
       position: absolute;
-      width: 5.3in;
-      right: -1.05in;
-      bottom: .5in;
-      opacity: .035;
+      width: 5.25in;
+      left: 50%;
+      bottom: .56in;
+      transform: translateX(-50%);
+      opacity: .032;
       pointer-events: none;
       z-index: 0;
     }
@@ -179,23 +223,47 @@
       align-items: center;
       justify-content: center;
       min-height: 1.06in;
-      padding-bottom: 13px;
+      padding: 0 .12in 13px;
       border-bottom: 2px solid var(--purple);
     }
 
     .letterhead img {
       display: block;
-      width: 5.8in;
+      width: 5.55in;
+      max-width: 100%;
       max-height: .9in;
       object-fit: contain;
     }
 
     .contact-strip {
-      padding: 7px 4px 0;
+      padding: 8px 8px 0;
       color: #655d68;
-      font-size: 9.5pt;
+      font-size: 9.15pt;
       text-align: center;
-      letter-spacing: .1px;
+      letter-spacing: .08px;
+      line-height: 1.45;
+    }
+
+    .contact-strip .contact-line {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      column-gap: 7px;
+      row-gap: 2px;
+    }
+
+    .contact-strip .item + .item::before {
+      content: "|";
+      margin-right: 7px;
+      color: #b49ab8;
+    }
+
+    .contact-strip .website-line {
+      margin-top: 1px;
+      color: var(--purple-dark);
+      font-weight: 700;
+      letter-spacing: .15px;
     }
 
     .letter-main {
@@ -206,47 +274,25 @@
       line-height: 1.62;
     }
 
-    .date {
-      margin-bottom: 22px;
-      color: #3e3940;
-    }
-
-    .recipient-block {
-      white-space: pre-line;
-      margin-bottom: 20px;
-      line-height: 1.45;
-    }
-
-    .subject-line {
-      margin: 0 0 20px;
-      font-weight: 700;
-    }
-
+    .date { margin-bottom: 22px; color: #3e3940; }
+    .recipient-block { white-space: pre-line; margin-bottom: 20px; line-height: 1.45; }
+    .subject-line { margin: 0 0 20px; font-weight: 700; }
     .salutation { margin-bottom: 13px; }
-
-    .body-copy {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
+    .body-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
     .closing { margin-top: 24px; }
 
-    .signature {
+    .signature-block { margin-top: 9px; }
+
+    .drawn-signature {
       display: none;
-      margin-top: 6px;
+      width: 2.25in;
+      height: .62in;
+      object-fit: contain;
+      object-position: left center;
+      margin: -1px 0 1px;
     }
 
-    .signature.show { display: block; }
-
-    .signature-script {
-      margin: 2px 0 -2px;
-      color: #211d23;
-      font-family: "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive;
-      font-size: 27pt;
-      line-height: 1.2;
-      transform: rotate(-2deg);
-      transform-origin: left center;
-    }
+    .drawn-signature.show { display: block; }
 
     .signature-name {
       font-weight: 700;
@@ -272,22 +318,86 @@
 
     .footer strong { color: var(--purple-dark); }
 
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(24, 18, 26, .55);
+    }
+
+    .modal.show { display: flex; }
+
+    .modal-card {
+      width: min(560px, 100%);
+      padding: 20px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    .modal-card h2 {
+      margin: 0 0 5px;
+      color: var(--purple-dark);
+      font-size: 20px;
+    }
+
+    .modal-card p {
+      margin: 0 0 13px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .canvas-wrap {
+      border: 1px solid #cfc3d2;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+      touch-action: none;
+    }
+
+    #signatureCanvas {
+      display: block;
+      width: 100%;
+      height: 190px;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 9px;
+      margin-top: 14px;
+    }
+
     @media (max-width: 1100px) {
       .app { grid-template-columns: 1fr; }
       .controls { border-right: 0; border-bottom: 1px solid #ddd5e1; }
       .preview-wrap { padding: 18px; }
     }
 
-    @page {
-      size: Letter;
-      margin: 0;
+    @media (max-width: 600px) {
+      .controls { padding: 18px 16px; }
+      .controls h1 { font-size: 20px; }
+      .button-row { position: sticky; bottom: 0; padding-top: 10px; background: linear-gradient(transparent, #fff 22%); }
+      .preview-wrap { padding: 14px 8px 20px; overflow: hidden; }
+      .modal-actions { grid-template-columns: 1fr; }
+      #signatureCanvas { height: 165px; }
     }
+
+    @page { size: Letter; margin: 0; }
 
     @media print {
       body { background: #fff; }
-      .controls { display: none !important; }
+      .controls, .modal { display: none !important; }
       .app { display: block; min-height: auto; }
       .preview-wrap { padding: 0; overflow: visible; }
+      .page-stage { width: 8.5in !important; min-height: 11in !important; transform: none !important; margin: 0; }
       .letter-page {
         width: 8.5in;
         min-height: 11in;
@@ -334,20 +444,26 @@
         <input id="closingText" type="text" value="Sincerely," />
       </div>
 
-      <div class="check-row">
-        <input type="checkbox" id="includeSignature" />
-        <label for="includeSignature" style="margin:0">Add digital signature</label>
-      </div>
-
-      <div class="signature-fields" id="signatureFields">
+      <div class="signature-area">
         <div class="field">
           <label for="signerName">Signer name</label>
           <input id="signerName" type="text" placeholder="Full name" />
         </div>
-        <div class="field" style="margin-bottom:0">
-          <label for="signerTitle">Title (optional)</label>
+        <div class="field">
+          <label for="signerTitle">Signer title</label>
           <input id="signerTitle" type="text" placeholder="Title" />
         </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="includeSignature" />
+          <label for="includeSignature" style="margin:0">Add handwritten signature</label>
+        </div>
+
+        <div class="signature-actions">
+          <button class="secondary" id="signBtn" type="button">Sign Now</button>
+          <button class="danger-light" id="removeSignatureBtn" type="button">Remove Signature</button>
+        </div>
+        <div class="signature-status" id="signatureStatus">No handwritten signature added.</div>
       </div>
 
       <div class="button-row">
@@ -358,41 +474,63 @@
       <div class="hint">When the print window opens, choose <strong>Save as PDF</strong>. For the cleanest result, disable browser headers and footers and keep the scale at 100%.</div>
     </aside>
 
-    <main class="preview-wrap">
-      <section class="letter-page" id="letterPage">
-        <img class="watermark" src="images/Benevolent_transparent_icon.png" alt="" />
+    <main class="preview-wrap" id="previewWrap">
+      <div class="page-stage" id="pageStage">
+        <section class="letter-page" id="letterPage">
+          <img class="watermark" src="images/Benevolent_transparent_icon.png" alt="" />
 
-        <div class="letter-content">
-          <header>
-            <div class="letterhead">
-              <img src="images/Benevolent_transparent_logo.png" alt="Benevolent Home Care" />
-            </div>
-            <div class="contact-strip">
-              1021 McDonald Avenue, Brooklyn, NY 11230 &nbsp;|&nbsp; 718-345-1000 &nbsp;|&nbsp; info@benevolenthomecare.com &nbsp;|&nbsp; benevolenthomecare.com
-            </div>
-          </header>
+          <div class="letter-content">
+            <header>
+              <div class="letterhead">
+                <img src="images/Benevolent_transparent_logo.png" alt="Benevolent Home Care" />
+              </div>
+              <div class="contact-strip">
+                <div class="contact-line">
+                  <span class="item">1021 McDonald Avenue, Brooklyn, NY 11230</span>
+                  <span class="item">718-345-1000</span>
+                  <span class="item">info@benevolenthomecare.com</span>
+                </div>
+                <div class="website-line">www.benevolenthomecare.com</div>
+              </div>
+            </header>
 
-          <article class="letter-main">
-            <div class="date" id="previewDate"></div>
-            <div class="recipient-block" id="previewRecipient"></div>
-            <div class="subject-line" id="previewSubject"></div>
-            <div class="salutation" id="previewSalutation">Dear Sir or Madam,</div>
-            <div class="body-copy" id="previewBody">Type or paste your letter in the panel on the left.</div>
-            <div class="closing" id="previewClosing">Sincerely,</div>
+            <article class="letter-main">
+              <div class="date" id="previewDate"></div>
+              <div class="recipient-block" id="previewRecipient"></div>
+              <div class="subject-line" id="previewSubject"></div>
+              <div class="salutation" id="previewSalutation">Dear Sir or Madam,</div>
+              <div class="body-copy" id="previewBody">Type or paste your letter in the panel above.</div>
+              <div class="closing" id="previewClosing">Sincerely,</div>
 
-            <div class="signature" id="previewSignature">
-              <div class="signature-script" id="previewSignatureScript"></div>
-              <div class="signature-name" id="previewSignerName"></div>
-              <div class="signature-title" id="previewSignerTitle"></div>
-            </div>
-          </article>
+              <div class="signature-block">
+                <img class="drawn-signature" id="previewDrawnSignature" alt="Signature" />
+                <div class="signature-name" id="previewSignerName"></div>
+                <div class="signature-title" id="previewSignerTitle"></div>
+              </div>
+            </article>
 
-          <footer class="footer">
-            <strong>Compassionate care. Dependable support. Dignity at home.</strong>
-          </footer>
-        </div>
-      </section>
+            <footer class="footer">
+              <strong>Compassionate care. Dependable support. Dignity at home.</strong>
+            </footer>
+          </div>
+        </section>
+      </div>
     </main>
+  </div>
+
+  <div class="modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="signatureModalTitle">
+    <div class="modal-card">
+      <h2 id="signatureModalTitle">Add Signature</h2>
+      <p>Sign below using your mouse, finger, or stylus. Your signature will be placed above the signer name.</p>
+      <div class="canvas-wrap">
+        <canvas id="signatureCanvas"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button class="danger-light" id="clearCanvasBtn" type="button">Clear</button>
+        <button class="secondary" id="cancelSignatureBtn" type="button">Cancel</button>
+        <button class="primary" id="saveSignatureBtn" type="button">Use Signature</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -409,6 +547,13 @@
       signerName: $('signerName'),
       signerTitle: $('signerTitle')
     };
+
+    let signatureData = '';
+    let isDrawing = false;
+    let hasCanvasInk = false;
+
+    const canvas = $('signatureCanvas');
+    const ctx = canvas.getContext('2d');
 
     function localISODate() {
       const d = new Date();
@@ -434,21 +579,138 @@
       $('previewSubject').style.display = subject ? 'block' : 'none';
 
       $('previewSalutation').textContent = fields.salutation.value;
-      $('previewBody').textContent = fields.letterBody.value || 'Type or paste your letter in the panel on the left.';
+      $('previewBody').textContent = fields.letterBody.value || 'Type or paste your letter in the panel above.';
       $('previewClosing').textContent = fields.closingText.value;
 
-      const showSignature = fields.includeSignature.checked;
-      $('signatureFields').classList.toggle('show', showSignature);
-      $('previewSignature').classList.toggle('show', showSignature);
-      $('previewSignatureScript').textContent = fields.signerName.value;
       $('previewSignerName').textContent = fields.signerName.value;
       $('previewSignerTitle').textContent = fields.signerTitle.value;
+      $('previewSignerName').style.display = fields.signerName.value.trim() ? 'block' : 'none';
       $('previewSignerTitle').style.display = fields.signerTitle.value.trim() ? 'block' : 'none';
+
+      const showSignature = fields.includeSignature.checked && !!signatureData;
+      $('previewDrawnSignature').classList.toggle('show', showSignature);
+      $('previewDrawnSignature').src = showSignature ? signatureData : '';
+      $('signatureStatus').textContent = signatureData
+        ? (fields.includeSignature.checked ? 'Handwritten signature added.' : 'Signature saved. Check the box to include it.')
+        : 'No handwritten signature added.';
+    }
+
+    function fitPreview() {
+      const wrap = $('previewWrap');
+      const stage = $('pageStage');
+      const page = $('letterPage');
+
+      if (window.matchMedia('print').matches || window.innerWidth > 1100) {
+        stage.style.transform = '';
+        stage.style.height = '';
+        stage.style.width = '';
+        return;
+      }
+
+      const available = Math.max(280, wrap.clientWidth - 2);
+      const scale = Math.min(1, available / page.offsetWidth);
+      stage.style.width = page.offsetWidth + 'px';
+      stage.style.height = (page.offsetHeight * scale) + 'px';
+      stage.style.transform = `scale(${scale})`;
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 2.3;
+      ctx.strokeStyle = '#171319';
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      hasCanvasInk = false;
+    }
+
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
+
+    function startDrawing(event) {
+      event.preventDefault();
+      isDrawing = true;
+      hasCanvasInk = true;
+      const p = pointFromEvent(event);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      canvas.setPointerCapture?.(event.pointerId);
+    }
+
+    function draw(event) {
+      if (!isDrawing) return;
+      event.preventDefault();
+      const p = pointFromEvent(event);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    function stopDrawing(event) {
+      if (!isDrawing) return;
+      isDrawing = false;
+      ctx.closePath();
+      if (event?.pointerId !== undefined) canvas.releasePointerCapture?.(event.pointerId);
+    }
+
+    function openSignatureModal() {
+      $('signatureModal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(resizeCanvas);
+    }
+
+    function closeSignatureModal() {
+      $('signatureModal').classList.remove('show');
+      document.body.style.overflow = '';
     }
 
     Object.values(fields).forEach(el => {
       el.addEventListener('input', updatePreview);
       el.addEventListener('change', updatePreview);
+    });
+
+    canvas.addEventListener('pointerdown', startDrawing);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointercancel', stopDrawing);
+    canvas.addEventListener('pointerleave', stopDrawing);
+
+    $('signBtn').addEventListener('click', openSignatureModal);
+    $('cancelSignatureBtn').addEventListener('click', closeSignatureModal);
+    $('clearCanvasBtn').addEventListener('click', resizeCanvas);
+
+    $('saveSignatureBtn').addEventListener('click', () => {
+      if (!hasCanvasInk) {
+        alert('Please sign in the box first.');
+        return;
+      }
+      signatureData = canvas.toDataURL('image/png');
+      fields.includeSignature.checked = true;
+      closeSignatureModal();
+      updatePreview();
+    });
+
+    $('removeSignatureBtn').addEventListener('click', () => {
+      signatureData = '';
+      fields.includeSignature.checked = false;
+      $('previewDrawnSignature').removeAttribute('src');
+      updatePreview();
+    });
+
+    $('signatureModal').addEventListener('click', event => {
+      if (event.target === $('signatureModal')) closeSignatureModal();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && $('signatureModal').classList.contains('show')) closeSignatureModal();
     });
 
     $('printBtn').addEventListener('click', () => window.print());
@@ -463,11 +725,21 @@
       fields.includeSignature.checked = false;
       fields.signerName.value = '';
       fields.signerTitle.value = '';
+      signatureData = '';
       updatePreview();
     });
 
+    window.addEventListener('resize', fitPreview);
+    window.addEventListener('load', fitPreview);
+    window.addEventListener('beforeprint', () => {
+      $('pageStage').style.transform = '';
+      $('pageStage').style.height = '';
+    });
+    window.addEventListener('afterprint', fitPreview);
+
     fields.letterDate.value = localISODate();
     updatePreview();
+    setTimeout(fitPreview, 50);
   </script>
 </body>
 </html>
