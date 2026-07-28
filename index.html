@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Benevolent Home Care Letter Generator</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';"></script>
   <style>
     :root {
       --purple: #94439f;
@@ -789,7 +789,7 @@
 
       try {
         if (!window.jspdf?.jsPDF) {
-          throw new Error('PDF library did not load. Please check your internet connection and try again.');
+          throw new Error('The PDF component could not load. Please refresh the page and try again.');
         }
 
         const { jsPDF } = window.jspdf;
