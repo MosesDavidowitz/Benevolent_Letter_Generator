@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Benevolent Home Care Letter Generator</title>
+  <style>
+    :root {
+      --purple: #94439f;
+      --purple-dark: #6f2b79;
+      --ink: #25222a;
+      --muted: #716b77;
+      --line: #e5dce8;
+      --paper: #ffffff;
+      --workspace: #f4f1f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--workspace);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px minmax(720px, 1fr);
+      min-height: 100vh;
+    }
+
+    .controls {
+      padding: 24px;
+      background: #fff;
+      border-right: 1px solid #ddd5e1;
+      overflow-y: auto;
+    }
+
+    .controls h1 {
+      margin: 0 0 6px;
+      color: var(--purple-dark);
+      font-size: 22px;
+    }
+
+    .controls .intro {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .field { margin-bottom: 15px; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4d4650;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #d8cfdb;
+      border-radius: 8px;
+      padding: 10px 11px;
+      font: inherit;
+      font-size: 14px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(148, 67, 159, .12);
+    }
+
+    textarea {
+      min-height: 190px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 8px 0 14px;
+      font-size: 14px;
+    }
+
+    .check-row input {
+      width: auto;
+      accent-color: var(--purple);
+    }
+
+    .signature-fields {
+      display: none;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbf9fc;
+      margin-bottom: 15px;
+    }
+
+    .signature-fields.show { display: block; }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+      color: white;
+    }
+
+    .secondary {
+      background: #eee8f0;
+      color: var(--purple-dark);
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #807783;
+    }
+
+    .preview-wrap {
+      padding: 36px;
+      overflow: auto;
+    }
+
+    .letter-page {
+      position: relative;
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto;
+      padding: .62in .72in .67in;
+      background: var(--paper);
+      box-shadow: 0 12px 35px rgba(52, 37, 56, .16);
+      overflow: hidden;
+    }
+
+    .watermark {
+      position: absolute;
+      width: 5.3in;
+      right: -1.05in;
+      bottom: .5in;
+      opacity: .035;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .letter-content {
+      position: relative;
+      z-index: 1;
+      min-height: 9.7in;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .letterhead {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 1.06in;
+      padding-bottom: 13px;
+      border-bottom: 2px solid var(--purple);
+    }
+
+    .letterhead img {
+      display: block;
+      width: 5.8in;
+      max-height: .9in;
+      object-fit: contain;
+    }
+
+    .contact-strip {
+      padding: 7px 4px 0;
+      color: #655d68;
+      font-size: 9.5pt;
+      text-align: center;
+      letter-spacing: .1px;
+    }
+
+    .letter-main {
+      flex: 1;
+      padding: 28px 4px 14px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 11.5pt;
+      line-height: 1.62;
+    }
+
+    .date {
+      margin-bottom: 22px;
+      color: #3e3940;
+    }
+
+    .recipient-block {
+      white-space: pre-line;
+      margin-bottom: 20px;
+      line-height: 1.45;
+    }
+
+    .subject-line {
+      margin: 0 0 20px;
+      font-weight: 700;
+    }
+
+    .salutation { margin-bottom: 13px; }
+
+    .body-copy {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .closing { margin-top: 24px; }
+
+    .signature {
+      display: none;
+      margin-top: 6px;
+    }
+
+    .signature.show { display: block; }
+
+    .signature-script {
+      margin: 2px 0 -2px;
+      color: #211d23;
+      font-family: "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive;
+      font-size: 27pt;
+      line-height: 1.2;
+      transform: rotate(-2deg);
+      transform-origin: left center;
+    }
+
+    .signature-name {
+      font-weight: 700;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+    }
+
+    .signature-title {
+      margin-top: 2px;
+      color: #5d565f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9.5pt;
+    }
+
+    .footer {
+      border-top: 1px solid var(--line);
+      padding-top: 9px;
+      text-align: center;
+      color: #726a75;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 8.5pt;
+    }
+
+    .footer strong { color: var(--purple-dark); }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .controls { border-right: 0; border-bottom: 1px solid #ddd5e1; }
+      .preview-wrap { padding: 18px; }
+    }
+
+    @page {
+      size: Letter;
+      margin: 0;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .controls { display: none !important; }
+      .app { display: block; min-height: auto; }
+      .preview-wrap { padding: 0; overflow: visible; }
+      .letter-page {
+        width: 8.5in;
+        min-height: 11in;
+        margin: 0;
+        box-shadow: none;
+        break-after: page;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="controls">
+      <h1>Letter Generator</h1>
+      <p class="intro">Enter the letter details below. The preview updates automatically and is formatted for a standard U.S. letter-size PDF.</p>
+
+      <div class="field">
+        <label for="letterDate">Letter date</label>
+        <input type="date" id="letterDate" />
+      </div>
+
+      <div class="field">
+        <label for="recipient">Recipient / address (optional)</label>
+        <textarea id="recipient" style="min-height:95px" placeholder="Name&#10;Company&#10;Address"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="subject">Subject (optional)</label>
+        <input id="subject" type="text" placeholder="Re: Subject of letter" />
+      </div>
+
+      <div class="field">
+        <label for="salutation">Salutation</label>
+        <input id="salutation" type="text" value="Dear Sir or Madam," />
+      </div>
+
+      <div class="field">
+        <label for="letterBody">Letter text</label>
+        <textarea id="letterBody" placeholder="Type or paste your letter here..."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="closingText">Closing</label>
+        <input id="closingText" type="text" value="Sincerely," />
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="includeSignature" />
+        <label for="includeSignature" style="margin:0">Add digital signature</label>
+      </div>
+
+      <div class="signature-fields" id="signatureFields">
+        <div class="field">
+          <label for="signerName">Signer name</label>
+          <input id="signerName" type="text" placeholder="Full name" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="signerTitle">Title (optional)</label>
+          <input id="signerTitle" type="text" placeholder="Title" />
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="secondary" id="clearBtn" type="button">Clear</button>
+        <button class="primary" id="printBtn" type="button">Export PDF</button>
+      </div>
+
+      <div class="hint">When the print window opens, choose <strong>Save as PDF</strong>. For the cleanest result, disable browser headers and footers and keep the scale at 100%.</div>
+    </aside>
+
+    <main class="preview-wrap">
+      <section class="letter-page" id="letterPage">
+        <img class="watermark" src="images/Benevolent_transparent_icon(18).png" alt="" />
+
+        <div class="letter-content">
+          <header>
+            <div class="letterhead">
+              <img src="images/Benevolent_transparent_logo(24).png" alt="Benevolent Home Care" />
+            </div>
+            <div class="contact-strip">
+              1021 McDonald Avenue, Brooklyn, NY 11230 &nbsp;|&nbsp; 718-345-1000 &nbsp;|&nbsp; info@benevolenthomecare.com &nbsp;|&nbsp; benevolenthomecare.com
+            </div>
+          </header>
+
+          <article class="letter-main">
+            <div class="date" id="previewDate"></div>
+            <div class="recipient-block" id="previewRecipient"></div>
+            <div class="subject-line" id="previewSubject"></div>
+            <div class="salutation" id="previewSalutation">Dear Sir or Madam,</div>
+            <div class="body-copy" id="previewBody">Type or paste your letter in the panel on the left.</div>
+            <div class="closing" id="previewClosing">Sincerely,</div>
+
+            <div class="signature" id="previewSignature">
+              <div class="signature-script" id="previewSignatureScript"></div>
+              <div class="signature-name" id="previewSignerName"></div>
+              <div class="signature-title" id="previewSignerTitle"></div>
+            </div>
+          </article>
+
+          <footer class="footer">
+            <strong>Compassionate care. Dependable support. Dignity at home.</strong>
+          </footer>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const fields = {
+      letterDate: $('letterDate'),
+      recipient: $('recipient'),
+      subject: $('subject'),
+      salutation: $('salutation'),
+      letterBody: $('letterBody'),
+      closingText: $('closingText'),
+      includeSignature: $('includeSignature'),
+      signerName: $('signerName'),
+      signerTitle: $('signerTitle')
+    };
+
+    function localISODate() {
+      const d = new Date();
+      const offset = d.getTimezoneOffset();
+      return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 10);
+    }
+
+    function formatDate(value) {
+      if (!value) return '';
+      const [y, m, d] = value.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric'
+      });
+    }
+
+    function updatePreview() {
+      $('previewDate').textContent = formatDate(fields.letterDate.value);
+      $('previewRecipient').textContent = fields.recipient.value;
+      $('previewRecipient').style.display = fields.recipient.value.trim() ? 'block' : 'none';
+
+      const subject = fields.subject.value.trim();
+      $('previewSubject').textContent = subject ? (subject.toLowerCase().startsWith('re:') ? subject : 'Re: ' + subject) : '';
+      $('previewSubject').style.display = subject ? 'block' : 'none';
+
+      $('previewSalutation').textContent = fields.salutation.value;
+      $('previewBody').textContent = fields.letterBody.value || 'Type or paste your letter in the panel on the left.';
+      $('previewClosing').textContent = fields.closingText.value;
+
+      const showSignature = fields.includeSignature.checked;
+      $('signatureFields').classList.toggle('show', showSignature);
+      $('previewSignature').classList.toggle('show', showSignature);
+      $('previewSignatureScript').textContent = fields.signerName.value;
+      $('previewSignerName').textContent = fields.signerName.value;
+      $('previewSignerTitle').textContent = fields.signerTitle.value;
+      $('previewSignerTitle').style.display = fields.signerTitle.value.trim() ? 'block' : 'none';
+    }
+
+    Object.values(fields).forEach(el => {
+      el.addEventListener('input', updatePreview);
+      el.addEventListener('change', updatePreview);
+    });
+
+    $('printBtn').addEventListener('click', () => window.print());
+
+    $('clearBtn').addEventListener('click', () => {
+      fields.letterDate.value = localISODate();
+      fields.recipient.value = '';
+      fields.subject.value = '';
+      fields.salutation.value = 'Dear Sir or Madam,';
+      fields.letterBody.value = '';
+      fields.closingText.value = 'Sincerely,';
+      fields.includeSignature.checked = false;
+      fields.signerName.value = '';
+      fields.signerTitle.value = '';
+      updatePreview();
+    });
+
+    fields.letterDate.value = localISODate();
+    updatePreview();
+  </script>
+</body>
+</html>
