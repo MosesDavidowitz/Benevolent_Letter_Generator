@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Benevolent Home Care Letter Generator</title>
+  <link rel="icon" type="image/png" href="images/Benevolent_transparent_icon.png" />
+  <link rel="apple-touch-icon" href="images/Benevolent_transparent_icon.png" />
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js';"></script>
   <style>
     :root {
@@ -38,6 +40,19 @@
       background: #fff;
       border-right: 1px solid #ddd5e1;
       overflow-y: auto;
+    }
+
+    .app-brand {
+      display: flex;
+      justify-content: center;
+      margin: 0 0 14px;
+    }
+
+    .app-brand img {
+      display: block;
+      width: min(270px, 86%);
+      max-height: 72px;
+      object-fit: contain;
     }
 
     .controls h1 {
@@ -178,6 +193,15 @@
       color: #807783;
     }
 
+    .project-credit {
+      grid-column: 1 / -1;
+      padding: 12px 18px 16px;
+      text-align: center;
+      color: #786f7b;
+      font-size: 12px;
+      background: var(--workspace);
+    }
+
     .preview-wrap {
       padding: 36px;
       overflow: auto;
@@ -279,9 +303,7 @@
     .date { margin-bottom: 22px; color: #3e3940; }
     .recipient-block { white-space: pre-line; margin-bottom: 20px; line-height: 1.45; }
     .subject-line { margin: 0 0 20px; font-weight: 700; }
-    .salutation { margin-bottom: 13px; }
     .body-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
-    .closing { margin-top: 24px; }
 
     .signature-block { margin-top: 9px; }
 
@@ -386,6 +408,7 @@
     @media (max-width: 600px) {
       .controls { padding: 18px 16px; }
       .controls h1 { font-size: 20px; }
+      .app-brand img { width: min(250px, 88%); }
       .button-row { position: sticky; bottom: 0; padding-top: 10px; background: linear-gradient(transparent, #fff 22%); }
       .preview-wrap { padding: 14px 8px 20px; overflow: hidden; }
       .modal-actions { grid-template-columns: 1fr; }
@@ -396,7 +419,7 @@
 
     @media print {
       body { background: #fff; }
-      .controls, .modal { display: none !important; }
+      .controls, .modal, .project-credit { display: none !important; }
       .app { display: block; min-height: auto; }
       .preview-wrap { padding: 0; overflow: visible; }
       .page-stage { width: 8.5in !important; min-height: 11in !important; transform: none !important; margin: 0; }
@@ -413,6 +436,7 @@
 <body>
   <div class="app">
     <aside class="controls">
+      <div class="app-brand"><img src="images/Benevolent_transparent_logo.png" alt="Benevolent Home Care" /></div>
       <h1>Letter Generator</h1>
       <p class="intro">Enter the letter details below. The preview updates automatically and is formatted for a standard U.S. letter-size PDF.</p>
 
@@ -432,18 +456,8 @@
       </div>
 
       <div class="field">
-        <label for="salutation">Salutation</label>
-        <input id="salutation" type="text" value="Dear Sir or Madam," />
-      </div>
-
-      <div class="field">
         <label for="letterBody">Letter text</label>
         <textarea id="letterBody" placeholder="Type or paste your letter here..."></textarea>
-      </div>
-
-      <div class="field">
-        <label for="closingText">Closing</label>
-        <input id="closingText" type="text" value="Sincerely," />
       </div>
 
       <div class="signature-area">
@@ -454,11 +468,6 @@
         <div class="field">
           <label for="signerTitle">Signer title</label>
           <input id="signerTitle" type="text" placeholder="Title" />
-        </div>
-
-        <div class="check-row">
-          <input type="checkbox" id="includeSignature" />
-          <label for="includeSignature" style="margin:0">Add handwritten signature</label>
         </div>
 
         <div class="signature-actions">
@@ -499,9 +508,7 @@
               <div class="date" id="previewDate"></div>
               <div class="recipient-block" id="previewRecipient"></div>
               <div class="subject-line" id="previewSubject"></div>
-              <div class="salutation" id="previewSalutation">Dear Sir or Madam,</div>
               <div class="body-copy" id="previewBody"></div>
-              <div class="closing" id="previewClosing">Sincerely,</div>
 
               <div class="signature-block">
                 <img class="drawn-signature" id="previewDrawnSignature" alt="Signature" />
@@ -517,6 +524,7 @@
         </section>
       </div>
     </main>
+    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v33</div>
   </div>
 
   <div class="modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="signatureModalTitle">
@@ -541,10 +549,7 @@
       letterDate: $('letterDate'),
       recipient: $('recipient'),
       subject: $('subject'),
-      salutation: $('salutation'),
       letterBody: $('letterBody'),
-      closingText: $('closingText'),
-      includeSignature: $('includeSignature'),
       signerName: $('signerName'),
       signerTitle: $('signerTitle')
     };
@@ -579,9 +584,6 @@
         fields.signerName.value = saved.name || '';
         fields.signerTitle.value = saved.title || '';
         signatureData = saved.signature || '';
-        fields.includeSignature.checked = saved.includeSignature === undefined
-          ? Boolean(signatureData)
-          : Boolean(saved.includeSignature && signatureData);
       } catch (error) {
         console.warn('Unable to load the saved signer profile.', error);
       }
@@ -592,8 +594,7 @@
         localStorage.setItem(SIGNER_STORAGE_KEY, JSON.stringify({
           name: fields.signerName.value.trim(),
           title: fields.signerTitle.value.trim(),
-          signature: signatureData,
-          includeSignature: fields.includeSignature.checked
+          signature: signatureData
         }));
       } catch (error) {
         console.warn('Unable to save the signer profile.', error);
@@ -609,20 +610,18 @@
       $('previewSubject').textContent = subject ? (subject.toLowerCase().startsWith('re:') ? subject : 'Re: ' + subject) : '';
       $('previewSubject').style.display = subject ? 'block' : 'none';
 
-      $('previewSalutation').textContent = fields.salutation.value;
       $('previewBody').textContent = fields.letterBody.value;
-      $('previewClosing').textContent = fields.closingText.value;
 
       $('previewSignerName').textContent = fields.signerName.value;
       $('previewSignerTitle').textContent = fields.signerTitle.value;
       $('previewSignerName').style.display = fields.signerName.value.trim() ? 'block' : 'none';
       $('previewSignerTitle').style.display = fields.signerTitle.value.trim() ? 'block' : 'none';
 
-      const showSignature = fields.includeSignature.checked && !!signatureData;
+      const showSignature = !!signatureData;
       $('previewDrawnSignature').classList.toggle('show', showSignature);
       $('previewDrawnSignature').src = showSignature ? signatureData : '';
       $('signatureStatus').textContent = signatureData
-        ? (fields.includeSignature.checked ? 'Handwritten signature added.' : 'Signature saved. Check the box to include it.')
+        ? 'Handwritten signature added.'
         : 'No handwritten signature added.';
     }
 
@@ -715,11 +714,6 @@
       el.addEventListener('change', saveSignerProfile);
     });
 
-    fields.includeSignature.addEventListener('change', () => {
-      saveSignerProfile();
-      updatePreview();
-    });
-
     canvas.addEventListener('pointerdown', startDrawing);
     canvas.addEventListener('pointermove', draw);
     canvas.addEventListener('pointerup', stopDrawing);
@@ -736,7 +730,6 @@
         return;
       }
       signatureData = canvas.toDataURL('image/png');
-      fields.includeSignature.checked = true;
       saveSignerProfile();
       closeSignatureModal();
       updatePreview();
@@ -744,7 +737,6 @@
 
     $('removeSignatureBtn').addEventListener('click', () => {
       signatureData = '';
-      fields.includeSignature.checked = false;
       saveSignerProfile();
       $('previewDrawnSignature').removeAttribute('src');
       updatePreview();
@@ -926,16 +918,10 @@
           addWrappedText(subjectText, { font: 'times', style: 'bold', size: 10.5, lineHeight: 15, gapAfter: 12 });
         }
 
-        const salutation = fields.salutation.value.trim();
-        if (salutation) addWrappedText(salutation, { size: 11, lineHeight: 16, gapAfter: 12 });
-
         const body = cleanMultiline(fields.letterBody.value).trim();
         if (body) addWrappedText(body, { size: 11, lineHeight: 16.5, gapAfter: 16 });
 
-        const closing = fields.closingText.value.trim();
-        if (closing) addWrappedText(closing, { size: 11, lineHeight: 16, gapAfter: 6 });
-
-        const showSignature = fields.includeSignature.checked && !!signatureData;
+        const showSignature = !!signatureData;
         if (showSignature) {
           ensureSpace(48);
           try {
@@ -980,9 +966,7 @@
       fields.letterDate.value = localISODate();
       fields.recipient.value = '';
       fields.subject.value = '';
-      fields.salutation.value = 'Dear Sir or Madam,';
       fields.letterBody.value = '';
-      fields.closingText.value = 'Sincerely,';
       loadSignerProfile();
       updatePreview();
     });
@@ -996,6 +980,7 @@
     });
     window.addEventListener('afterprint', fitPreview);
 
+    $('projectYear').textContent = new Date().getFullYear();
     fields.letterDate.value = localISODate();
     loadSignerProfile();
     updatePreview();
