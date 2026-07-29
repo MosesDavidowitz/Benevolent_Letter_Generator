@@ -56,16 +56,10 @@
     }
 
     .controls h1 {
-      margin: 0 0 6px;
+      margin: 0 0 22px;
       color: var(--purple-dark);
       font-size: 22px;
-    }
-
-    .controls .intro {
-      margin: 0 0 22px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
+      text-align: center;
     }
 
     .field { margin-bottom: 15px; }
@@ -300,7 +294,16 @@
       line-height: 1.62;
     }
 
-    .date { margin-bottom: 22px; color: #3e3940; }
+    .date { margin-bottom: 18px; color: #3e3940; }
+    .document-heading {
+      margin: 0 0 22px;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14pt;
+      font-weight: 800;
+      letter-spacing: .35px;
+      text-transform: uppercase;
+    }
     .recipient-block { white-space: pre-line; margin-bottom: 20px; line-height: 1.45; }
     .subject-line { margin: 0 0 20px; font-weight: 700; }
     .body-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -438,11 +441,15 @@
     <aside class="controls">
       <div class="app-brand"><img src="images/Benevolent_transparent_logo.png" alt="Benevolent Home Care" /></div>
       <h1>Letter Generator</h1>
-      <p class="intro">Enter the letter details below. The preview updates automatically and is formatted for a standard U.S. letter-size PDF.</p>
 
       <div class="field">
         <label for="letterDate">Letter date</label>
         <input type="date" id="letterDate" />
+      </div>
+
+      <div class="field">
+        <label for="documentHeading">Document heading (optional)</label>
+        <input id="documentHeading" type="text" placeholder="MEMORANDUM" />
       </div>
 
       <div class="field">
@@ -506,6 +513,7 @@
 
             <article class="letter-main">
               <div class="date" id="previewDate"></div>
+              <div class="document-heading" id="previewDocumentHeading"></div>
               <div class="recipient-block" id="previewRecipient"></div>
               <div class="subject-line" id="previewSubject"></div>
               <div class="body-copy" id="previewBody"></div>
@@ -524,7 +532,7 @@
         </section>
       </div>
     </main>
-    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v33</div>
+    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v34</div>
   </div>
 
   <div class="modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="signatureModalTitle">
@@ -547,6 +555,7 @@
 
     const fields = {
       letterDate: $('letterDate'),
+      documentHeading: $('documentHeading'),
       recipient: $('recipient'),
       subject: $('subject'),
       letterBody: $('letterBody'),
@@ -603,6 +612,11 @@
 
     function updatePreview() {
       $('previewDate').textContent = formatDate(fields.letterDate.value);
+
+      const documentHeading = fields.documentHeading.value.trim();
+      $('previewDocumentHeading').textContent = documentHeading;
+      $('previewDocumentHeading').style.display = documentHeading ? 'block' : 'none';
+
       $('previewRecipient').textContent = fields.recipient.value;
       $('previewRecipient').style.display = fields.recipient.value.trim() ? 'block' : 'none';
 
@@ -907,7 +921,22 @@
           y += gapAfter;
         }
 
-        addWrappedText(formatDate(fields.letterDate.value), { size: 10.5, lineHeight: 15, gapAfter: 12 });
+        addWrappedText(formatDate(fields.letterDate.value), { size: 10.5, lineHeight: 15, gapAfter: 10 });
+
+        const documentHeading = fields.documentHeading.value.trim();
+        if (documentHeading) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(30, 27, 31);
+          const headingLines = doc.splitTextToSize(documentHeading.toUpperCase(), CONTENT_W);
+          const headingHeight = headingLines.length * 18 + 12;
+          ensureSpace(headingHeight);
+          headingLines.forEach(line => {
+            doc.text(line, PAGE_W / 2, y, { align: 'center' });
+            y += 18;
+          });
+          y += 12;
+        }
 
         const recipient = cleanMultiline(fields.recipient.value).trim();
         if (recipient) addWrappedText(recipient, { size: 10.5, lineHeight: 14, gapAfter: 11 });
@@ -964,6 +993,7 @@
 
     $('clearBtn').addEventListener('click', () => {
       fields.letterDate.value = localISODate();
+      fields.documentHeading.value = '';
       fields.recipient.value = '';
       fields.subject.value = '';
       fields.letterBody.value = '';
