@@ -304,7 +304,15 @@
       letter-spacing: .35px;
       text-transform: uppercase;
     }
-    .recipient-block { white-space: pre-line; margin-bottom: 20px; line-height: 1.45; }
+    .recipient-block {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      column-gap: 7px;
+      margin-bottom: 20px;
+      line-height: 1.45;
+    }
+    .recipient-label { font-weight: 700; }
+    .recipient-text { white-space: pre-line; }
     .subject-line { margin: 0 0 20px; font-weight: 700; }
     .body-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
 
@@ -459,7 +467,7 @@
 
       <div class="field">
         <label for="subject">Subject (optional)</label>
-        <input id="subject" type="text" placeholder="Re: Subject of letter" />
+        <input id="subject" type="text" placeholder="Subject of letter" />
       </div>
 
       <div class="field">
@@ -514,7 +522,10 @@
             <article class="letter-main">
               <div class="date" id="previewDate"></div>
               <div class="document-heading" id="previewDocumentHeading"></div>
-              <div class="recipient-block" id="previewRecipient"></div>
+              <div class="recipient-block" id="previewRecipient">
+                <div class="recipient-label">To:</div>
+                <div class="recipient-text" id="previewRecipientText"></div>
+              </div>
               <div class="subject-line" id="previewSubject"></div>
               <div class="body-copy" id="previewBody"></div>
 
@@ -532,7 +543,7 @@
         </section>
       </div>
     </main>
-    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v34</div>
+    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v35</div>
   </div>
 
   <div class="modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="signatureModalTitle">
@@ -617,11 +628,11 @@
       $('previewDocumentHeading').textContent = documentHeading;
       $('previewDocumentHeading').style.display = documentHeading ? 'block' : 'none';
 
-      $('previewRecipient').textContent = fields.recipient.value;
-      $('previewRecipient').style.display = fields.recipient.value.trim() ? 'block' : 'none';
+      $('previewRecipientText').textContent = fields.recipient.value;
+      $('previewRecipient').style.display = fields.recipient.value.trim() ? 'grid' : 'none';
 
-      const subject = fields.subject.value.trim();
-      $('previewSubject').textContent = subject ? (subject.toLowerCase().startsWith('re:') ? subject : 'Re: ' + subject) : '';
+      const subject = fields.subject.value.trim().replace(/^re\s*:\s*/i, '');
+      $('previewSubject').textContent = subject ? 'Re: ' + subject : '';
       $('previewSubject').style.display = subject ? 'block' : 'none';
 
       $('previewBody').textContent = fields.letterBody.value;
@@ -939,12 +950,35 @@
         }
 
         const recipient = cleanMultiline(fields.recipient.value).trim();
-        if (recipient) addWrappedText(recipient, { size: 10.5, lineHeight: 14, gapAfter: 11 });
+        if (recipient) {
+          doc.setFont('times', 'bold');
+          doc.setFontSize(10.5);
+          doc.setTextColor(30, 27, 31);
+          ensureSpace(14);
+          doc.text('To:', LEFT, y);
+          const recipientIndent = 28;
+          const recipientLines = recipient.split('\n');
+          recipientLines.forEach((line, index) => {
+            if (index > 0) {
+              ensureSpace(14);
+              y += 14;
+            }
+            doc.setFont('times', 'normal');
+            const wrapped = doc.splitTextToSize(line || ' ', CONTENT_W - recipientIndent);
+            wrapped.forEach((wrappedLine, wrappedIndex) => {
+              if (wrappedIndex > 0) {
+                ensureSpace(14);
+                y += 14;
+              }
+              doc.text(wrappedLine, LEFT + recipientIndent, y);
+            });
+          });
+          y += 25;
+        }
 
-        const subject = fields.subject.value.trim();
+        const subject = fields.subject.value.trim().replace(/^re\s*:\s*/i, '');
         if (subject) {
-          const subjectText = subject.toLowerCase().startsWith('re:') ? subject : `Re: ${subject}`;
-          addWrappedText(subjectText, { font: 'times', style: 'bold', size: 10.5, lineHeight: 15, gapAfter: 12 });
+          addWrappedText(`Re: ${subject}`, { font: 'times', style: 'bold', size: 10.5, lineHeight: 15, gapAfter: 12 });
         }
 
         const body = cleanMultiline(fields.letterBody.value).trim();
