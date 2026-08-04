@@ -305,14 +305,10 @@
       text-transform: uppercase;
     }
     .recipient-block {
-      display: grid;
-      grid-template-columns: 34px minmax(0, 1fr);
-      column-gap: 7px;
       margin-bottom: 20px;
       line-height: 1.45;
+      white-space: pre-line;
     }
-    .recipient-label { font-weight: 700; }
-    .recipient-text { white-space: pre-line; }
     .subject-line { margin: 0 0 20px; font-weight: 700; }
     .body-copy { white-space: pre-wrap; overflow-wrap: anywhere; }
 
@@ -461,8 +457,8 @@
       </div>
 
       <div class="field">
-        <label for="recipient">Recipient / address (optional)</label>
-        <textarea id="recipient" style="min-height:95px" placeholder="Name&#10;Company&#10;Address"></textarea>
+        <label for="recipient">Recipient (optional)</label>
+        <textarea id="recipient" style="min-height:95px" placeholder="Enter recipient information..."></textarea>
       </div>
 
       <div class="field">
@@ -522,10 +518,7 @@
             <article class="letter-main">
               <div class="date" id="previewDate"></div>
               <div class="document-heading" id="previewDocumentHeading"></div>
-              <div class="recipient-block" id="previewRecipient">
-                <div class="recipient-label">To:</div>
-                <div class="recipient-text" id="previewRecipientText"></div>
-              </div>
+              <div class="recipient-block" id="previewRecipient"></div>
               <div class="subject-line" id="previewSubject"></div>
               <div class="body-copy" id="previewBody"></div>
 
@@ -543,7 +536,7 @@
         </section>
       </div>
     </main>
-    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v35</div>
+    <div class="project-credit">A Davidowitz Project © <span id="projectYear"></span> · v36</div>
   </div>
 
   <div class="modal" id="signatureModal" role="dialog" aria-modal="true" aria-labelledby="signatureModalTitle">
@@ -628,8 +621,8 @@
       $('previewDocumentHeading').textContent = documentHeading;
       $('previewDocumentHeading').style.display = documentHeading ? 'block' : 'none';
 
-      $('previewRecipientText').textContent = fields.recipient.value;
-      $('previewRecipient').style.display = fields.recipient.value.trim() ? 'grid' : 'none';
+      $('previewRecipient').textContent = fields.recipient.value;
+      $('previewRecipient').style.display = fields.recipient.value.trim() ? 'block' : 'none';
 
       const subject = fields.subject.value.trim().replace(/^re\s*:\s*/i, '');
       $('previewSubject').textContent = subject ? 'Re: ' + subject : '';
@@ -951,29 +944,13 @@
 
         const recipient = cleanMultiline(fields.recipient.value).trim();
         if (recipient) {
-          doc.setFont('times', 'bold');
-          doc.setFontSize(10.5);
-          doc.setTextColor(30, 27, 31);
-          ensureSpace(14);
-          doc.text('To:', LEFT, y);
-          const recipientIndent = 28;
-          const recipientLines = recipient.split('\n');
-          recipientLines.forEach((line, index) => {
-            if (index > 0) {
-              ensureSpace(14);
-              y += 14;
-            }
-            doc.setFont('times', 'normal');
-            const wrapped = doc.splitTextToSize(line || ' ', CONTENT_W - recipientIndent);
-            wrapped.forEach((wrappedLine, wrappedIndex) => {
-              if (wrappedIndex > 0) {
-                ensureSpace(14);
-                y += 14;
-              }
-              doc.text(wrappedLine, LEFT + recipientIndent, y);
-            });
+          addWrappedText(recipient, {
+            font: 'times',
+            style: 'normal',
+            size: 10.5,
+            lineHeight: 14.5,
+            gapAfter: 11
           });
-          y += 25;
         }
 
         const subject = fields.subject.value.trim().replace(/^re\s*:\s*/i, '');
